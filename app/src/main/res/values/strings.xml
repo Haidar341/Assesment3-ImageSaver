@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ImageSaver</string>
+    <string name="default_web_client_id">46463473dl2v1ku3gjlm2sd5vb.apps.googleusercontent.com</string>
+    <string-array name="priority_array">403929-e5gd7ms4371u
+        <item>High</item>
+        <item>Medium</item>
+        <item>Low</item>
+    </string-array>
+    <string name="title_activity_home">HomeActivity</string>
+</resources>

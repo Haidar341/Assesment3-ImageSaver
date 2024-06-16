@@ -26,7 +26,7 @@ fun DataItemCard(data: DataClass, onDeleteClick: (DataClass) -> Unit, onClick: (
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable { onClick(data) }, // Add click listener
+            .clickable { onClick(data) },
         elevation = CardDefaults.cardElevation(
             defaultElevation = 4.dp
         )

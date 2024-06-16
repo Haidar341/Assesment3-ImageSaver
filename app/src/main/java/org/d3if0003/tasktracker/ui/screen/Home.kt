@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +35,8 @@ fun Home(
     isSignedIn: Boolean,
     userName: String?,
     userEmail: String?,
-    isLoading: Boolean
+    isLoading: Boolean,
+    isNetworkAvailable: Boolean // Add this parameter
 ) {
     var showUserProfile by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
@@ -59,94 +61,88 @@ fun Home(
                         .padding(end = 10.dp)
                         .clickable { showUserProfile = !showUserProfile }
                 )
-                Text("Klik profile untuk melihat nama, email, dan logout") // Add this line
+                Text("Klik profile image untuk info user")
+                Spacer(modifier = Modifier.weight(1f))
+                if (isSignedIn) {
+                    Text(
+                        text = "Sign Out",
+                        modifier = Modifier.clickable(onClick = onSignOutClick),
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        text = "Sign In",
+                        modifier = Modifier.clickable(onClick = onSignInClick),
+                        color = Color.Blue,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-
-            TextField(
+            if (showUserProfile) {
+                Text("User: $userName\nEmail: $userEmail")
+            }
+            OutlinedTextField(
                 value = searchText,
                 onValueChange = {
                     searchText = it
                     onSearchQueryChanged(it)
                 },
-                placeholder = { Text(text = "Search...") },
+                label = { Text("Search Tasks") },
                 leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null
-                    )
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-                    .background(Color(0xFFCCCCFF)) // Lavender color
+                    .padding(16.dp)
             )
 
             if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 16.dp)
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 16.dp)
-                ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(tasks) { task ->
-                        DataItemCard(task, onDeleteTask, onTaskClick) // Pass the task click callback
+                        DataItemCard(
+                            data = task,
+                            onDeleteClick = { onDeleteTask(task) },
+                            onClick = { onTaskClick(task) } // Handle task click
+                        )
                     }
                 }
             }
         }
 
-        FloatingActionButton(
-            onClick = onFabClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(40.dp),
-            containerColor = Color(0xFF7070E4) // Lavender color
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_add_24),
-                contentDescription = "Add",
-                tint = Color.White
-            )
-        }
-
-        if (showUserProfile) {
-            AlertDialog(
-                onDismissRequest = { showUserProfile = false },
-                title = { Text(text = "User Profile") },
-                text = {
-                    Column {
-                        Text(text = "Name: ${userName ?: "N/A"}")
-                        Text(text = "Email: ${userEmail ?: "N/A"}")
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = { showUserProfile = false }) {
-                        Text("Close")
-                    }
-                },
-                dismissButton = {
-                    if (isSignedIn) {
-                        Button(onClick = {
-                            showUserProfile = false
-                            onSignOutClick()
-                        }) {
-                            Text("Sign Out")
-                        }
-                    } else {
-                        Button(onClick = {
-                            showUserProfile = false
-                            onSignInClick()
-                        }) {
-                            Text("Sign In")
-                        }
-                    }
-                }
-            )
+        if (isNetworkAvailable) {
+            FloatingActionButton(
+                onClick = onFabClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Upload Task")
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_signal_wifi_connected_no_internet_4_24),
+                    contentDescription = "No Internet Connection",
+                    modifier = Modifier.size(64.dp)
+                )
+                Text(
+                    text = "No internet connection.",
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }

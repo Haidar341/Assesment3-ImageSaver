@@ -1,13 +1,15 @@
 package org.d3if0003.tasktracker.ui.view
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -16,7 +18,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import org.d3if0003.tasktracker.R
 import org.d3if0003.tasktracker.model.DataClass
-import org.d3if0003.tasktracker.ui.screen.Home
+import org.d3if0003.tasktracker.ui.screen.MyApp
+import org.d3if0003.tasktracker.util.NetworkUtils
 
 class MainActivity : AppCompatActivity() {
     private lateinit var databaseReference: DatabaseReference
@@ -25,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
     private val isLoading = mutableStateOf(true)
+    private val isNetworkAvailable = mutableStateOf(true)
 
     companion object {
         private const val TAG = "MainActivity"
@@ -57,33 +61,59 @@ class MainActivity : AppCompatActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         setContent {
-            Home(
+            var isNetworkAvailable by remember { mutableStateOf(NetworkUtils.isNetworkAvailable(this)) }
+
+            LaunchedEffect(Unit) {
+                registerReceiver(connectivityReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
+            }
+
+            DisposableEffect(Unit) {
+                onDispose {
+                    unregisterReceiver(connectivityReceiver)
+                }
+            }
+
+            MyApp(
                 tasks = dataList,
-                onProfileClick = { /* Handle profile click */ },
-                onSearchQueryChanged = { query -> searchList(query) },
+                onSignOut = { signOut() },
                 onFabClick = {
-                    if (auth.currentUser != null) {
-                        val intent = Intent(this@MainActivity, UploadActivity::class.java)
-                        startActivity(intent)
+                    if (isNetworkAvailable) {
+                        if (auth.currentUser != null) {
+                            val intent = Intent(this@MainActivity, UploadActivity::class.java)
+                            startActivity(intent)
+                        } else {
+                            Toast.makeText(this, "Please log in to upload tasks", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
-                        Toast.makeText(this, "Please log in to upload tasks", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "No internet connection. Cannot upload tasks.", Toast.LENGTH_SHORT).show()
                     }
                 },
+                onProfileImageClick = { /* Handle profile click */ },
+                onSearchQueryChanged = { query -> searchList(query) },
                 onSignInClick = {
                     val intent = Intent(this@MainActivity, LoginActivity::class.java)
                     startActivity(intent)
                 },
-                onSignOutClick = { signOut() },
                 onDeleteTask = { data -> confirmDeleteData(data) },
                 onTaskClick = { data -> openDetailActivity(data) },
-                isSignedIn = currentUser != null,
                 userName = userName,
                 userEmail = userEmail,
-                isLoading = isLoading.value
+                isLoading = isLoading.value,
+                isNetworkAvailable = isNetworkAvailable // Pass the parameter
             )
         }
 
         fetchData()
+    }
+
+    private val connectivityReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isConnected = NetworkUtils.isNetworkAvailable(context ?: return)
+            isNetworkAvailable.value = isConnected
+            if (!isConnected) {
+                Toast.makeText(context, "No internet connection.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun fetchData() {

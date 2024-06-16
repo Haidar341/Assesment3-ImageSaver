@@ -2,8 +2,10 @@ package org.d3if0003.tasktracker.ui.view
 
 import android.app.Activity
 import android.app.ProgressDialog
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -19,6 +21,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import org.d3if0003.tasktracker.model.DataClass
 import org.d3if0003.tasktracker.ui.screen.Upload
+import org.d3if0003.tasktracker.util.NetworkUtils
 import java.io.IOException
 import java.util.*
 
@@ -53,25 +56,47 @@ class UploadActivity : AppCompatActivity() {
         setContent {
             var title by remember { mutableStateOf("") }
             var description by remember { mutableStateOf("") }
-            var priority by remember { mutableStateOf("") }
+            var purpose by remember { mutableStateOf("") }
             var isUploading by remember { mutableStateOf(false) }
+            var isNetworkAvailable by remember { mutableStateOf(NetworkUtils.isNetworkAvailable(this)) }
+
+            // Start observing network connectivity
+            DisposableEffect(Unit) {
+                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val networkCallback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: android.net.Network) {
+                        isNetworkAvailable = true
+                    }
+
+                    override fun onLost(network: android.net.Network) {
+                        isNetworkAvailable = false
+                    }
+                }
+                val networkRequest = android.net.NetworkRequest.Builder().build()
+                connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+
+                onDispose {
+                    connectivityManager.unregisterNetworkCallback(networkCallback)
+                }
+            }
 
             Upload(
                 lavender = Color(0xFFB388FF),
                 title = title,
                 description = description,
-                priority = priority,
+                purpose = purpose,
                 isUploading = isUploading,
                 onTitleChange = { title = it },
                 onDescriptionChange = { description = it },
-                onPriorityChange = { priority = it },
+                onPurposeChange = { purpose = it },
                 onUploadClick = {
                     isUploading = true
-                    uploadImageToFirebase(title, description, priority) { isUploading = false }
+                    uploadImageToFirebase(title, description, purpose) { isUploading = false }
                 },
                 onCancelClick = { finish() },
                 onSelectImageClick = { selectImageFromGallery() },
-                imageBitmap = bitmap
+                imageBitmap = bitmap,
+                isNetworkAvailable = isNetworkAvailable
             )
         }
     }
@@ -93,25 +118,27 @@ class UploadActivity : AppCompatActivity() {
                 setContent {
                     var title by remember { mutableStateOf("") }
                     var description by remember { mutableStateOf("") }
-                    var priority by remember { mutableStateOf("") }
+                    var purpose by remember { mutableStateOf("") }
                     var isUploading by remember { mutableStateOf(false) }
+                    var isNetworkAvailable by remember { mutableStateOf(NetworkUtils.isNetworkAvailable(this)) }
 
                     Upload(
                         lavender = Color(0xFFB388FF),
                         title = title,
                         description = description,
-                        priority = priority,
+                        purpose = purpose,
                         isUploading = isUploading,
                         onTitleChange = { title = it },
                         onDescriptionChange = { description = it },
-                        onPriorityChange = { priority = it },
+                        onPurposeChange = { purpose = it },
                         onUploadClick = {
                             isUploading = true
-                            uploadImageToFirebase(title, description, priority) { isUploading = false }
+                            uploadImageToFirebase(title, description, purpose) { isUploading = false }
                         },
                         onCancelClick = { finish() },
                         onSelectImageClick = { selectImageFromGallery() },
-                        imageBitmap = bitmap
+                        imageBitmap = bitmap,
+                        isNetworkAvailable = isNetworkAvailable
                     )
                 }
             } catch (e: IOException) {
@@ -120,8 +147,8 @@ class UploadActivity : AppCompatActivity() {
         }
     }
 
-    private fun uploadImageToFirebase(title: String, description: String, priority: String, onUploadComplete: () -> Unit) {
-        if (title.isEmpty() || description.isEmpty() || priority.isEmpty()) {
+    private fun uploadImageToFirebase(title: String, description: String, purpose: String, onUploadComplete: () -> Unit) {
+        if (title.isEmpty() || description.isEmpty() || purpose.isEmpty()) {
             Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
             onUploadComplete()
             return
@@ -140,7 +167,7 @@ class UploadActivity : AppCompatActivity() {
                             databaseReference.push().key,
                             title,
                             description,
-                            priority,
+                            purpose,
                             uri.toString()
                         )
                         databaseReference.child(dataClass.id!!).setValue(dataClass)
@@ -152,7 +179,7 @@ class UploadActivity : AppCompatActivity() {
                                     val intent = Intent(this, DetailActivity::class.java)
                                     intent.putExtra("Title", title)
                                     intent.putExtra("Description", description)
-                                    intent.putExtra("Purpose", priority)
+                                    intent.putExtra("Purpose", purpose)
                                     intent.putExtra("Image", uri.toString())
                                     startActivity(intent)
                                     finish()

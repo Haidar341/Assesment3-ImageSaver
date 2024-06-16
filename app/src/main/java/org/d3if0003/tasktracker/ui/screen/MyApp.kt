@@ -15,7 +15,8 @@ fun MyApp(
     onTaskClick: (DataClass) -> Unit, // Add task click callback
     userName: String,
     userEmail: String,
-    isLoading: Boolean
+    isLoading: Boolean,
+    isNetworkAvailable: Boolean // Add this parameter
 ) {
     Home(
         tasks = tasks,
@@ -29,6 +30,7 @@ fun MyApp(
         isSignedIn = true, // Adjust as necessary
         userName = userName,
         userEmail = userEmail,
-        isLoading = isLoading
+        isLoading = isLoading,
+        isNetworkAvailable = isNetworkAvailable // Pass the parameter
     )
 }
